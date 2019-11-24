@@ -1,0 +1,4 @@
+﻿  list.c
+C:\Users\ErikV\source\repos\ExercisesDay2\LinkedListTest\list.c(37): warning C4716: 'getItem': must return a value
+  TestSomething.cpp
+  LinkedListTest.vcxproj -> C:\Users\ErikV\source\repos\ExercisesDay2\Debug\LinkedListTest.exe

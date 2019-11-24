@@ -1,0 +1,9 @@
+﻿  main.c
+C:\Users\ErikV\source\repos\ExercisesDay2\Exercises4\main.c(16,1): warning C4090: 'initializing': different 'const' qualifiers
+C:\Users\ErikV\source\repos\ExercisesDay2\Exercises4\main.c(17,1): warning C4090: 'initializing': different 'const' qualifiers
+C:\Users\ErikV\source\repos\ExercisesDay2\Exercises4\main.c(48,16): warning C4047: 'return': 'char *' differs in levels of indirection from 'char'
+C:\Users\ErikV\source\repos\ExercisesDay2\Exercises4\main.c(40,1): warning C4090: 'initializing': different 'const' qualifiers
+C:\Users\ErikV\source\repos\ExercisesDay2\Exercises4\main.c(61,51): warning C4090: 'function': different 'const' qualifiers
+C:\Users\ErikV\source\repos\ExercisesDay2\Exercises4\main.c(62,53): warning C4090: 'function': different 'const' qualifiers
+C:\Users\ErikV\source\repos\ExercisesDay2\Exercises4\main.c(63,56): warning C4090: 'function': different 'const' qualifiers
+  Exercises4.vcxproj -> C:\Users\ErikV\source\repos\ExercisesDay2\Debug\Exercises4.exe

@@ -133,7 +133,7 @@ Select o.OrderDate,DAY(o.OrderDate),MONTH(o.OrderDate),YEAR(o.OrderDate),DATEPAR
 DATEPART(MINUTE,o.OrderDate), DATEPART(week, o.OrderDate), DATENAME(month, o.OrderDate), DATENAME(WEEKDAY, o.OrderDate)
 FROM  NorthwindDB.dbo.Orders o
 
----Fill dw dimensional tables from stage
+---Fill dwh dimensional tables from stage
 Use DM_Northwind
 --Customer
 INSERT INTO D_Customer(CustomerID,CustomerName, City, Country, PostalCode, validFrom, validTo)
@@ -155,7 +155,7 @@ INSERT INTO D_Date(EntireDate,DD, MM, YYYY,HH24, MM60,WeekNumber,NameOfMonth, Na
 Select OrderdateID, DD, MM, YYYY,HH24, MM60,WeekNumber,NameOfMonth, NameOfWeekday
 From StageNorthwind.dbo.Stage_D_Date 
 
-
+--Update surrogate keys
 Use StageNorthwind
 --Customer
 UPDATE stage_fact_sales
@@ -189,10 +189,11 @@ SET D_ID = (
 	WHERE d.EntireDate = StageNorthwind.dbo.stage_fact_sales.OrderDateID
 )
 
-
+--Fill DWH fact table
 USE StageNorthwind
 GO
 INSERT INTO DM_Northwind.dbo.F_Sales(D_ID,C_ID,P_ID,E_ID,Quantity, LineTotal)
 SELECT s.D_ID, s.C_ID, s.P_ID, s.E_ID, s.Quantity, s.SalesAmount FROM stage_fact_sales s
+WHERE CAST(s.OrderDateID as date) >= '1996/01/01' and CAST(s.OrderDateID as date) <= '1997/12/31'
 
 Select * from DM_Northwind.dbo.F_Sales

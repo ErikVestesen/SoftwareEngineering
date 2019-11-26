@@ -1,6 +1,7 @@
 USE DM_Northwind;
 go
 
+DROP TABLE DM_Update;
 DROP TABLE F_Sales;
 DROP TABLE D_Date;
 DROP TABLE D_Customer;
@@ -27,7 +28,8 @@ validTo DATE
 
 CREATE TABLE D_Customer(
 C_ID INT PRIMARY KEY IDENTITY (1, 1),
-CompanyName NVARCHAR(50), 
+CustomerID NVARCHAR(5),
+CustomerName NVARCHAR(50), 
 City  NVARCHAR(50), 
 Country NVARCHAR(50),
 PostalCode NVARCHAR(50),
@@ -37,7 +39,11 @@ validTo DATE
 
 CREATE TABLE D_Date(
 D_ID INT PRIMARY KEY IDENTITY (1, 1), 
-OrderDate DATE,
+DD INT,
+MM INT,
+YYYY INT,
+HH24 INT,
+MM60 INT,
 WeekNumber INT, 
 NameOfMonth NVARCHAR(50), 
 NameOfWeekday NVARCHAR(50)
@@ -53,4 +59,6 @@ CREATE TABLE F_Sales(
 	Discount FLOAT
 );
 
-
+CREATE TABLE DM_Update(
+	Last_updated Date
+)

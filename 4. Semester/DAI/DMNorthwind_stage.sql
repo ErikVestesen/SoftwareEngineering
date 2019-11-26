@@ -1,54 +1,3 @@
----Create data warehouse dimensional tables
-USE myNorthWindDB
-go
-DROP TABLE F_Sales;
-DROP TABLE D_Date;
-DROP TABLE D_Customer;
-DROP TABLE D_Employee;
-DROP TABLE D_Product;
-
-CREATE TABLE D_Product(
-P_ID INT PRIMARY KEY IDENTITY (1, 1),
-ProductName NVARCHAR(50), 
-CategoryName NVARCHAR(50),
-SupplierName NVARCHAR(50), 
-);
-
-CREATE TABLE D_Employee(
-E_ID INT PRIMARY KEY IDENTITY (1, 1),
-FullName NVARCHAR(50), 
-Title NVARCHAR(50), 
-City NVARCHAR(50)
-);
-
-CREATE TABLE D_Customer(
-C_ID INT PRIMARY KEY IDENTITY (1, 1),
-CustomerName NVARCHAR(50), 
-CustomerID NVARCHAR(5),
-City  NVARCHAR(50), 
-Country NVARCHAR(50),
-PostalCode NVARCHAR(10)
-);
-
-CREATE TABLE D_Date(
-D_ID INT PRIMARY KEY IDENTITY (1, 1), 
-DateID NVARCHAR(50),
-OrderDate DATE,
-WeekNumber INT, 
-NameOfMonth NVARCHAR(50), 
-NameOfWeekday NVARCHAR(50)
-);
-
-
-CREATE TABLE F_Sales(
-	C_ID INT REFERENCES D_Customer(C_ID),
-	D_ID INT REFERENCES D_Date(D_ID),
-	E_ID INT REFERENCES D_Employee(E_ID),
-	P_ID INT REFERENCES D_Product(P_ID),
-	LineTotal FLOAT,
-	Quantity INT
-);
-
 ---Create stage dimensional tables
 Use StageNorthwind
 go
@@ -112,37 +61,32 @@ JOIN NorthwindDB.dbo.Categories c on c.CategoryID = p.CategoryID
 JOIN NorthwindDB.dbo.Suppliers s on s.SupplierID = p.SupplierID
 
 --Date
---INSERT INTO  Stage_D_Date(OrderDate,DateID,WeekNumber,NameOfMonth, NameOfWeekday)
---Select o.OrderDate,o.OrderDate,DATEPART(week, o.OrderDate), DATENAME(month, o.OrderDate), DATENAME(WEEKDAY, o.OrderDate)
---From NorthwindDB.dbo.Orders o
 INSERT INTO Stage_D_Date(OrderdateID,DD,MM,YYYY,HH24,MM60,WeekNumber,NameOfMonth, NameOfWeekday)
 Select o.OrderDate,DAY(o.OrderDate),MONTH(o.OrderDate),YEAR(o.OrderDate),DATEPART(HOUR,o.OrderDate),
 DATEPART(MINUTE,o.OrderDate), DATEPART(week, o.OrderDate), DATENAME(month, o.OrderDate), DATENAME(WEEKDAY, o.OrderDate)
 FROM  NorthwindDB.dbo.Orders o
 
-
-
 ---Fill dw dimensional tables from stage
-Use myNorthWindDB
+Use DM_Northwind
 --Customer
-INSERT INTO D_Customer(CustomerID,CustomerName, City,Country, PostalCode)
-Select sc.CustomerID, sc.CustomerName, sc.City, sc.Country, sc.PostalCode
-From StageNorthwind.dbo.Stage_D_Customer sc
+INSERT INTO D_Customer(CustomerID,CustomerName, City, Country, PostalCode, validFrom, validTo)
+SELECT CustomerID,CustomerName, City, Country, PostalCode,'01/01/1996','01/01/2099' 
+FROM StageNorthwind.dbo.Stage_D_Customer
 
 --Employee
-INSERT INTO D_Employee(FullName, Title, City)
-Select se.FullName, se.Title, se.City
-From StageNorthwind.dbo.Stage_D_Employee se
+INSERT INTO D_Employee(FullName, Title, City, validFrom, validTo)
+SELECT FullName,Title, City,'01/01/1996','01/01/2099' 
+FROM StageNorthwind.dbo.Stage_D_Employee
 
 --Product
-INSERT INTO D_Product(ProductName, CategoryName,SupplierName)
-Select sp.ProductName, sp.CategoryName, sp.SupplierName
-From StageNorthwind.dbo.Stage_D_Product sp
+INSERT INTO D_Product (ProductName,CategoryName,SupplierName,validFrom,validTo)
+SELECT ProductName,CategoryName,SupplierName,'01/01/1996','01/01/2099'
+FROM StageNorthwind.dbo.Stage_D_Product
 
 --Date
---INSERT INTO D_Date(OrderDate,DateID,WeekNumber,NameOfMonth, NameOfWeekday)
---Select sd.OrderDate,sd.DateID, sd.WeekNumber, sd.NameOfMonth, sd.NameOfWeekday
---From StageNorthwind.dbo.Stage_D_Date sd
+INSERT INTO D_Date(DD, MM, YYYY,HH24, MM60,WeekNumber,NameOfMonth, NameOfWeekday)
+Select DD, MM, YYYY,HH24, MM60,WeekNumber,NameOfMonth, NameOfWeekday
+From StageNorthwind.dbo.Stage_D_Date 
 
 ---Create stage Fact table
 USE StageNorthwind
@@ -185,15 +129,15 @@ Use StageNorthwind
 UPDATE stage_fact_sales
 SET C_ID = (
 	SELECT C_ID 
-	FROM myNorthWindDB.dbo.D_Customer c
-	WHERE c.CustomerID = stage_fact_sales.CustomerID
+	FROM DM_Northwind.dbo.D_Customer c
+	WHERE c.C_ID = stage_fact_sales.CustomerID
 )
 
 --Employee
 UPDATE stage_fact_sales
 SET E_ID = (
 	SELECT E_ID 
-	FROM myNorthWindDB.dbo.D_Employee e
+	FROM DM_Northwind.dbo.D_Employee e
 	WHERE e.E_ID = stage_fact_sales.EmployeeID
 )
 
@@ -201,22 +145,25 @@ SET E_ID = (
 UPDATE stage_fact_sales
 SET P_ID = (
 	SELECT P_ID 
-	FROM myNorthWindDB.dbo.D_Product p
+	FROM DM_Northwind.dbo.D_Product p
 	WHERE p.P_ID = stage_fact_sales.ProductID
 )
 
 --Date
 UPDATE stage_fact_sales
 SET D_ID = (
-	SELECT top 1 (d.D_ID) --should only return one
-	FROM myNorthWindDB.dbo.D_Date d 
-	WHERE d.DateID = stage_fact_sales.OrderDateID
+	SELECT d.D_ID
+	FROM DM_Northwind.dbo.D_Date d 
+	WHERE d.D_ID = stage_fact_sales.D_ID
 )
 
 ---Populate data warehouse fact table from the stage fact table
 USE StageNorthwind
 GO
-INSERT INTO myNorthWindDB.dbo.F_Sales(D_ID,C_ID,P_ID,E_ID,Quantity, LineTotal)
-SELECT s.D_ID, s.C_ID, s.P_ID, s.E_ID, s.Quantity, s.SalesAmount FROM stage_fact_sales s
+INSERT INTO DM_Northwind.dbo.F_Sales(D_ID,C_ID,P_ID,E_ID,Quantity, LineTotal)
+SELECT s.D_ID, s.C_ID, s.P_ID, s.E_ID, s.Quantity, s.SalesAmount 
+FROM stage_fact_sales s
 
-Select * from myNorthWindDB.dbo.F_Sales
+Select * from DM_Northwind.dbo.F_Sales
+
+select * from stage_fact_sales

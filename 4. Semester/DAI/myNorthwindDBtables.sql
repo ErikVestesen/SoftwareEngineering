@@ -31,7 +31,11 @@ PostalCode INT
 
 CREATE TABLE D_Date(
 D_ID INT PRIMARY KEY IDENTITY (1, 1), 
-OrderDate DATE,
+DD INT,
+MM INT,
+YYYY INT,
+HH24 INT,
+MM60 INT,
 WeekNumber INT, 
 NameOfMonth NVARCHAR(50), 
 NameOfWeekday NVARCHAR(50)

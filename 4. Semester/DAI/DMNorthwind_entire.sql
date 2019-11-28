@@ -11,15 +11,18 @@ DROP TABLE D_Product;
 
 CREATE TABLE D_Product(
 P_ID INT PRIMARY KEY IDENTITY (1, 1),
+ProductId INT,
 ProductName NVARCHAR(50), 
 CategoryName NVARCHAR(50),
 SupplierName NVARCHAR(50),
+UnitPrice FLOAT,
 validFrom DATE,
 validTo DATE
 );
 
 CREATE TABLE D_Employee(
 E_ID INT PRIMARY KEY IDENTITY (1, 1),
+EmployeeId INT,
 FullName NVARCHAR(50), 
 Title NVARCHAR(50), 
 City NVARCHAR(50),
@@ -64,6 +67,8 @@ CREATE TABLE F_Sales(
 CREATE TABLE DM_Update(
 	Last_updated Date
 )
+--Insert last updated date into table
+INSERT INTO DM_Update(Last_updated) VALUES('12/31/1997') 
 ------------------------------------------------------------------------------------------------------------------------------------------------
 ---Create stage dimensional tables
 Use StageNorthwind
@@ -75,13 +80,16 @@ DROP TABLE Stage_D_Product;
 
 CREATE TABLE Stage_D_Product(
 P_ID INT PRIMARY KEY IDENTITY (1, 1),
+ProductId INT,
 ProductName NVARCHAR(50), 
 CategoryName NVARCHAR(50),
-SupplierName NVARCHAR(50)
+SupplierName NVARCHAR(50),
+UnitPrice FLOAT
 );
 
 CREATE TABLE Stage_D_Employee(
 E_ID INT PRIMARY KEY IDENTITY (1, 1),
+EmployeeId INT,
 FullName NVARCHAR(50), 
 Title NVARCHAR(50), 
 City NVARCHAR(50)
@@ -116,13 +124,13 @@ SELECT c.CustomerID,c.CompanyName,c.City,c.Country,c.PostalCode
 FROM NorthwindDB.dbo.Customers c
 
 --Employee
-INSERT INTO Stage_D_Employee(FullName, Title, City)
-SELECT e.FirstName +' '+ e.LastName, e.Title, e.City
+INSERT INTO Stage_D_Employee(FullName, Title, City, EmployeeId)
+SELECT e.FirstName +' '+ e.LastName, e.Title, e.City, e.EmployeeID
 FROM NorthwindDB.dbo.Employees e
 
 --Product
-INSERT INTO Stage_D_Product(ProductName, CategoryName,SupplierName)
-SELECT p.ProductName, c.CategoryName, s.CompanyName
+INSERT INTO Stage_D_Product(ProductName, CategoryName,SupplierName, ProductId, UnitPrice)
+SELECT p.ProductName, c.CategoryName, s.CompanyName, p.ProductID, p.UnitPrice
 FROM NorthwindDB.dbo.Products p
 JOIN NorthwindDB.dbo.Categories c on c.CategoryID = p.CategoryID
 JOIN NorthwindDB.dbo.Suppliers s on s.SupplierID = p.SupplierID
@@ -133,6 +141,42 @@ Select o.OrderDate,DAY(o.OrderDate),MONTH(o.OrderDate),YEAR(o.OrderDate),DATEPAR
 DATEPART(MINUTE,o.OrderDate), DATEPART(week, o.OrderDate), DATENAME(month, o.OrderDate), DATENAME(WEEKDAY, o.OrderDate)
 FROM  NorthwindDB.dbo.Orders o
 
+---Create stage Fact table
+USE StageNorthwind
+GO
+DROP TABLE Stage_F_sales
+CREATE TABLE Stage_F_sales(
+[C_ID] [int] NULL,
+[E_ID] [int] NULL,
+[P_ID] [int] NULL,
+[D_ID] [int] NULL,
+[CustomerID] [nchar](5) NULL,
+[ProductID] [int] NULL,
+[EmployeeID] [int] NULL,
+[OrderDateID] [nvarchar](50) NULL,
+[Quantity] [bigint] NULL,
+[SalesAmount] [decimal](18, 2) NULL
+)
+
+---Fill stage fact table
+USE NorthWindDB
+GO
+INSERT INTO StageNorthwind.dbo.Stage_F_sales
+(Quantity,SalesAmount,ProductID,CustomerID,EmployeeID,OrderDateID)
+SELECT 
+Quantity, 
+[Order Details].UnitPrice* Quantity,
+Products.ProductID, 
+Customers.CustomerID, 
+Employees.EmployeeID, 
+Orders.OrderDate
+FROM [Order Details] 
+JOIN Orders ON  Orders.OrderID= [Order Details].OrderID
+JOIN Customers on Orders.CustomerID= Customers.CustomerID
+JOIN Employees on Employees.EmployeeID= Orders.EmployeeID
+JOIN Products on Products.ProductID= [Order Details].ProductID
+
+
 ---Fill dwh dimensional tables from stage
 Use DM_Northwind
 --Customer
@@ -141,13 +185,13 @@ SELECT CustomerID,CustomerName, City, Country, PostalCode,'01/01/1996','01/01/20
 FROM StageNorthwind.dbo.Stage_D_Customer
 
 --Employee
-INSERT INTO D_Employee(FullName, Title, City, validFrom, validTo)
-SELECT FullName,Title, City,'01/01/1996','01/01/2099' 
+INSERT INTO D_Employee(EmployeeId, FullName, Title, City, validFrom, validTo)
+SELECT EmployeeId,FullName,Title, City,'01/01/1996','01/01/2099' 
 FROM StageNorthwind.dbo.Stage_D_Employee
 
 --Product
-INSERT INTO D_Product (ProductName,CategoryName,SupplierName,validFrom,validTo)
-SELECT ProductName,CategoryName,SupplierName,'01/01/1996','01/01/2099'
+INSERT INTO D_Product (ProductId,ProductName,CategoryName,SupplierName, UnitPrice,validFrom,validTo)
+SELECT ProductId,ProductName,CategoryName,SupplierName, UnitPrice,'01/01/1996','01/01/2099'
 FROM StageNorthwind.dbo.Stage_D_Product
 
 --Date
@@ -158,42 +202,44 @@ From StageNorthwind.dbo.Stage_D_Date
 --Update surrogate keys
 Use StageNorthwind
 --Customer
-UPDATE stage_fact_sales
+UPDATE Stage_F_sales
 SET C_ID = (
 	SELECT C_ID 
 	FROM DM_Northwind.dbo.D_Customer c
-	WHERE c.CustomerID = stage_fact_sales.CustomerID
+	WHERE c.CustomerID = Stage_F_sales.CustomerID
 )
 
 --Employee
-UPDATE stage_fact_sales
+UPDATE Stage_F_sales
 SET E_ID = (
 	SELECT E_ID 
 	FROM DM_Northwind.dbo.D_Employee e
-	WHERE e.E_ID = stage_fact_sales.EmployeeID
+	WHERE e.E_ID = Stage_F_sales.EmployeeID
 )
 
 --Product
-UPDATE stage_fact_sales
+UPDATE Stage_F_sales
 SET P_ID = (
 	SELECT P_ID 
 	FROM DM_Northwind.dbo.D_Product p
-	WHERE p.P_ID = stage_fact_sales.ProductID
+	WHERE p.P_ID = Stage_F_sales.ProductID
 )
 
 --Date
-UPDATE stage_fact_sales
+UPDATE Stage_F_sales
 SET D_ID = (
 	SELECT Top 1 (d.D_ID)
 	FROM DM_Northwind.dbo.D_Date d 
-	WHERE d.EntireDate = StageNorthwind.dbo.stage_fact_sales.OrderDateID
+	WHERE d.EntireDate = Stage_F_sales.OrderDateID
 )
 
 --Fill DWH fact table
 USE StageNorthwind
 GO
 INSERT INTO DM_Northwind.dbo.F_Sales(D_ID,C_ID,P_ID,E_ID,Quantity, LineTotal)
-SELECT s.D_ID, s.C_ID, s.P_ID, s.E_ID, s.Quantity, s.SalesAmount FROM stage_fact_sales s
+SELECT s.D_ID, s.C_ID, s.P_ID, s.E_ID, s.Quantity, s.SalesAmount FROM Stage_F_sales s
 WHERE CAST(s.OrderDateID as date) >= '1996/01/01' and CAST(s.OrderDateID as date) <= '1997/12/31'
 
-Select * from DM_Northwind.dbo.F_Sales
+--Testing stuff
+--Select * from DM_Northwind.dbo.F_Sales
+--Select D_ID,sum(LineTotal) DayTotal from DM_Northwind.dbo.F_Sales Group by D_ID Order by D_ID 

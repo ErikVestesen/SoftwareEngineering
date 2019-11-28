@@ -32,19 +32,14 @@ PostalCode NVARCHAR(50)
 
 
 --Last updated variables
-DECLARE @lastUpdated Date = (Select Last_updated from DM_Northwind.dbo.DM_Update)
-DECLARE @lastUpdatedPlusOne Date = DATEADD(day,1,(Select Last_updated from DM_Northwind.dbo.DM_Update))
+DECLARE @lastUpdated Date = (Select Last_updated from DM_Northwind.dbo.DM_Update) --31/12/1997
+DECLARE @lastUpdatedPlusOne Date = DATEADD(day,1,(Select Last_updated from DM_Northwind.dbo.DM_Update)) -- 01/01/1998
 DECLARE @endDate Date = '12/31/9999' 
 ------------------------
 --------Customer--------
 ------------------------
----Insert a row and find added rows
-Delete from NorthwindDB.dbo.Customers where CustomerID = 'MAKKR' -- this line is for testing
-Delete from DM_Northwind.dbo.D_Customer where CustomerID = 'MAKKR' -- this line is for testing
---Insert a row
-Insert into NorthwindDB.dbo.Customers(CustomerID, CompanyName, ContactName, City, Country, PostalCode)
-values ('MAKKR', 'Makkerne', 'Jens Yeet','Horsens','Denmark','8700')
---Find the new item
+
+---Insert added customers
 INSERT INTO DM_Northwind.dbo.D_Customer(CustomerID, CustomerName, City, Country, PostalCode,validFrom, validTo)
 Select CustomerID, CompanyName, City, Country, PostalCode, @lastUpdatedPlusOne, @endDate from NorthwindDB.dbo.Customers 
 WHERE CustomerID in 
@@ -58,12 +53,7 @@ WHERE CustomerID in
 	)
 )
 
---- Delete a row and find deleted rows
---Maybe you need to update the references somewhere. like this 
-UPDATE NorthwindDB.dbo.Orders SET CustomerID = NULL WHERE CustomerID = 'BOTTM' -- set references to null instead of deleting
---Delete a row 
-DELETE FROM NorthwindDB.dbo.Customers WHERE CustomerID = 'BOTTM'
---Update the deleted
+--Update deleted customers
 UPDATE DM_Northwind.dbo.D_Customer SET validTo = @lastUpdated
 WHERE CustomerID in
 (  
@@ -76,12 +66,7 @@ WHERE CustomerID in
 	)
 )
 
---- Change a row and find the changed row
---Change a row 
-UPDATE NorthwindDB.dbo.Customers SET Country = 'England' WHERE CustomerID = 'MEREP' -- change it
---UPDATE dbo.Customers SET Country = 'Canada' WHERE CustomerID = 'MEREP' -- this can change it back
---SELECT * FROM DM_Northwind.dbo.D_Customer WHERE CustomerID = 'MEREP' -- this is the one being changed
---Find changed row 
+--Insert and update changed customers
 INSERT INTO DM_Northwind.dbo.Changed_Customer(CustomerName, CustomerID, City, Country, PostalCode)
 (
 	SELECT CompanyName, CustomerID, City, Country, PostalCode FROM NorthwindDB.dbo.Customers --Today
@@ -107,18 +92,15 @@ FROM DM_Northwind.dbo.Changed_Customer)
 --Insert new row in dimension table
 INSERT INTO DM_Northwind.dbo.D_Customer(CustomerName, CustomerID, City, Country, PostalCode, validFrom, validTo)
 SELECT CustomerName, CustomerID, City, Country, PostalCode, @lastUpdatedPlusOne, @endDate FROM DM_Northwind.dbo.Changed_Customer
+
+
 ------------------------
 --------Employee--------
 ------------------------
----Insert a row and find added rows 
-Delete from NorthwindDB.dbo.Employees where Title = 'CEO Å' -- this line is for testing
-Delete from DM_Northwind.dbo.D_Employee where Title = 'CEO Å' -- this line is for testing
---Insert a row
-Insert into NorthwindDB.dbo.Employees(LastName,FirstName, Title,City, Country, PostalCode)
-values ('Hansen', 'Hans', 'CEO Å','Horsens','Denmark','8700')
---Find the new item
+
+---Insert added employees
 INSERT INTO DM_Northwind.dbo.D_Employee(FullName, Title, City,EmployeeId, validFrom, validTo)
-Select FirstName+' '+LastName,Title, City,EmployeeId, '01/01/1998', '01/01/9999' from NorthwindDB.dbo.Employees
+Select FirstName+' '+LastName,Title, City,EmployeeId, @lastUpdatedPlusOne, @endDate from NorthwindDB.dbo.Employees
 WHERE EmployeeID in 
 (
 	( --today
@@ -130,11 +112,8 @@ WHERE EmployeeID in
 	)
 )
 
---- Delete a row and find deleted rows
---Delete a row (this deletes the newly inserted one)
-DELETE FROM NorthwindDB.dbo.Employees WHERE EmployeeID in (Select max(EmployeeID) from NorthwindDB.dbo.Employees)
---Update the deleted
-UPDATE DM_Northwind.dbo.D_Employee SET validTo = '1997/12/31'
+--Update deleted Employees
+UPDATE DM_Northwind.dbo.D_Employee SET validTo = @lastUpdated
 WHERE EmployeeID in
 (  
 	(--Yesterday and past
@@ -146,13 +125,7 @@ WHERE EmployeeID in
 	)
 )
 
---Clear the changed data from yesterday
---delete from DM_Northwind.dbo.Changed_Employee
-
---- Change a row and find the changed row
---Change a row 
-UPDATE NorthwindDB.dbo.Employees SET City = 'yeet' WHERE EmployeeID in (Select max(EmployeeID) from NorthwindDB.dbo.Employees) 
---Find changed row 
+--Insert and update changed employees 
 INSERT INTO DM_Northwind.dbo.Changed_Employee(FullName, Title, City,EmployeeId)
 (
 	SELECT FirstName+' '+LastName, Title, City,EmployeeId FROM NorthwindDB.dbo.Employees --Today
@@ -171,17 +144,79 @@ INSERT INTO DM_Northwind.dbo.Changed_Employee(FullName, Title, City,EmployeeId)
 )
 --Update Existing row in dimension table
 UPDATE DM_Northwind.dbo.D_Employee
-SET validTo = '1997/12/31'
+SET validTo =  @lastUpdated
 WHERE EmployeeId in
 (SELECT EmployeeId
 FROM DM_Northwind.dbo.Changed_Employee)
 --Insert new row in dimension table
 INSERT INTO DM_Northwind.dbo.D_Employee(FullName, Title, City,EmployeeId, validFrom, validTo)
-SELECT FullName, Title, City,EmployeeId, '01/01/1998', '01/01/9999' FROM DM_Northwind.dbo.Changed_Employee
+SELECT FullName, Title, City,EmployeeId, @lastUpdatedPlusOne, @endDate FROM DM_Northwind.dbo.Changed_Employee
 
 
-
-
------------------------
+------------------------
 --------Product--------
------------------------
+------------------------
+---Insert added products
+INSERT INTO DM_Northwind.dbo.D_Product(ProductId,ProductName, UnitPrice, CategoryName,SupplierName, validFrom, validTo)
+Select ProductId,ProductName,UnitPrice, CategoryName,Suppliers.CompanyName, @lastUpdatedPlusOne, @endDate from NorthwindDB.dbo.Products
+join NorthwindDB.dbo.Categories on Categories.CategoryID = Products.CategoryID
+join NorthwindDB.dbo.Suppliers on Suppliers.SupplierID = Products.SupplierID
+WHERE ProductID in 
+(
+	( --today
+	SELECT ProductID FROM NorthwindDB.dbo.Products
+	join NorthwindDB.dbo.Categories on Categories.CategoryID = Products.CategoryID
+	join NorthwindDB.dbo.Suppliers on Suppliers.SupplierID = Products.SupplierID
+	)
+	EXCEPT
+	( --yesterday
+	SELECT ProductID FROM DM_Northwind.dbo.D_Product
+	)
+)
+
+--Update deleted products
+UPDATE DM_Northwind.dbo.D_Product SET validTo =  @lastUpdated
+WHERE ProductID in
+(  
+	(--Yesterday and past
+	SELECT ProductID FROM DM_Northwind.dbo.D_Product
+	)
+	EXCEPT 
+	( --Today
+	SELECT ProductID FROM NorthwindDB.dbo.Products
+	join NorthwindDB.dbo.Categories on Categories.CategoryID = Products.CategoryID
+	join NorthwindDB.dbo.Suppliers on Suppliers.SupplierID = Products.SupplierID
+	)
+)
+
+--Insert and update changed products 
+INSERT INTO DM_Northwind.dbo.Changed_Product(ProductId, ProductName, CategoryName,SupplierName,UnitPrice)
+(
+	SELECT ProductId, ProductName, CategoryName,Suppliers.CompanyName,UnitPrice FROM NorthwindDB.dbo.Products--Today
+	join NorthwindDB.dbo.Categories on Categories.CategoryID = Products.CategoryID
+	join NorthwindDB.dbo.Suppliers on Suppliers.SupplierID = Products.SupplierID
+	
+	EXCEPT --Yesterday 
+	(
+		SELECT  ProductId, ProductName, CategoryName,SupplierName,UnitPrice  FROM DM_Northwind.dbo.D_Product
+	)
+	EXCEPT
+	(
+		SELECT  ProductId, ProductName, CategoryName,Suppliers.CompanyName,UnitPrice  FROM NorthwindDB.dbo.Products
+		join NorthwindDB.dbo.Categories on Categories.CategoryID = Products.CategoryID
+		join NorthwindDB.dbo.Suppliers on Suppliers.SupplierID = Products.SupplierID
+		WHERE ProductId NOT IN 
+		(
+			SELECT ProductId FROM DM_Northwind.dbo.D_Product
+		)
+	)
+)
+----Update Existing row in dimension table
+UPDATE DM_Northwind.dbo.D_Product
+SET validTo = @lastUpdated
+WHERE ProductId in
+(SELECT ProductId
+FROM DM_Northwind.dbo.Changed_Product)
+----Insert new row in dimension table
+INSERT INTO DM_Northwind.dbo.D_Product(ProductId, ProductName, CategoryName,SupplierName,UnitPrice, validFrom, validTo)
+SELECT ProductId, ProductName, CategoryName,SupplierName,UnitPrice, @lastUpdatedPlusOne, @endDate FROM DM_Northwind.dbo.Changed_Product

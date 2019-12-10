@@ -20,18 +20,18 @@ DROP TABLE DW_D_WineCellar;
 DROP TABLE DW_D_Measurement;
 
 CREATE TABLE DW_D_Measurement(
-M_ID INT PRIMARY KEY, 
+M_ID INT PRIMARY KEY IDENTITY (1, 1), 
 MeasureID INT,
-CO2Value INT,
-TemperatureValue INT,
-HumidityValue INT,
+DataName NVARCHAR(50),
+DataValue DECIMAL(18,2),
+SensorID INT,
 MeasureTimestamp Datetime,
 validFrom DATE,
 validTo DATE
 );
 
 CREATE TABLE DW_D_WineCellar(
-W_ID INT PRIMARY KEY, 
+W_ID INT PRIMARY KEY IDENTITY (1, 1), 
 WineCellarID INT,
 CellarName NVARCHAR(50),
 validFrom DATE,
@@ -39,7 +39,7 @@ validTo DATE
 );
 
 CREATE TABLE DW_D_Calendar(
-D_ID INT PRIMARY KEY, 
+D_ID INT PRIMARY KEY IDENTITY (1, 1), 
 DD_inserted INT,
 MM_inserted INT,
 YYYY_inserted INT,
@@ -52,11 +52,10 @@ NameOfWeekday_inserted NVARCHAR(50)
 
 
 CREATE TABLE DW_D_Sensor(
-S_ID INT PRIMARY KEY,
+S_ID INT PRIMARY KEY IDENTITY (1, 1),
 SensorID INT,
 SensorName NVARCHAR(50),
 RoomLocation NVARCHAR(50), 
-MeasureID INT,
 WineCellarID INT,
 validFrom DATE,
 validTo DATE
@@ -84,22 +83,22 @@ DROP TABLE Stage_WineCellar;
 DROP TABLE Stage_Measurement;
 
 CREATE TABLE Stage_Measurement(
-M_ID INT PRIMARY KEY IDENTITY (1, 1), 
+M_ID INT PRIMARY KEY , 
 MeasureID INT,
-CO2Value INT,
-TemperatureValue INT,
-HumidityValue INT,
-MeasureTimestamp Datetime
+DataName NVARCHAR(50),
+DataValue DECIMAL(18,2),
+SensorID INT,
+MeasureTimestamp DATETIME
 );
 
 CREATE TABLE Stage_WineCellar(
-W_ID INT PRIMARY KEY IDENTITY (1, 1), 
+W_ID INT PRIMARY KEY , 
 WineCellarID INT,
 CellarName NVARCHAR(50) 
 );
 
 CREATE TABLE Stage_Calendar(
-C_ID INT PRIMARY KEY IDENTITY (1, 1), 
+D_ID INT PRIMARY KEY , 
 DD_inserted INT,
 MM_inserted INT,
 YYYY_inserted INT,
@@ -112,36 +111,35 @@ NameOfWeekday_inserted NVARCHAR(50)
 
 
 CREATE TABLE Stage_Sensor(
-S_ID INT PRIMARY KEY IDENTITY (1, 1),
+S_ID INT PRIMARY KEY ,
 SensorID INT,
 SensorName NVARCHAR(50),
 RoomLocation NVARCHAR(50), 
-MeasureID INT,
 WineCellarID INT
 );
 
 ----------------
 ---Fill Stage---
 ----------------
-
 --Stage Measurement
-INSERT INTO Stage_Measurement(MeasureID,CO2Value, TemperatureValue,HumidityValue,MeasureTimestamp)
-SELECT MeasureID,CO2Value, TemperatureValue,HumidityValue,MeasureTimestamp
+INSERT INTO Stage_Measurement(M_ID,MeasureID,DataName,DataValue,SensorID,MeasureTimestamp)
+SELECT M_ID,M_ID,DataType,DataValue,SensorID,Date_Inserted
 FROM sep4.dbo.Measurement
 
 --Stage WineCellar
-INSERT INTO Stage_WineCellar(WineCellarID,CellarName)
-SELECT WineCellarID,CellarName
+INSERT INTO Stage_WineCellar(W_ID, WineCellarID,CellarName)
+SELECT WinecellarID,WinecellarID,CellarName
 FROM sep4.dbo.WineCellar
 
 --Stage Sensor
-INSERT INTO Stage_Sensor(SensorID,SensorName,RoomLocation,MeasureID,WineCellarID)
-SELECT SensorID,SensorName,RoomLocation,MeasurementID,WineCellarID
+INSERT INTO Stage_Sensor(S_ID, SensorID,SensorName,RoomLocation,WineCellarID)
+SELECT SensorID,SensorID,SensorName,RoomLocation,WineCellarID
 FROM sep4.dbo.Sensor
----Fill stage Calendar when discussed---
-INSERT INTO Stage_Calendar(DD_inserted,MM_inserted,YYYY_inserted,HH24_inserted,MM60_inserted,WeekNumber_inserted,NameOfMonth_inserted, NameOfWeekday_inserted)
-Select DAY(m.MeasureTimestamp),MONTH(m.MeasureTimestamp),YEAR(m.MeasureTimestamp),DATEPART(HOUR,m.MeasureTimestamp),
-DATEPART(MINUTE,m.MeasureTimestamp), DATEPART(week, m.MeasureTimestamp), DATENAME(month, m.MeasureTimestamp), DATENAME(WEEKDAY, m.MeasureTimestamp)
+
+--Stage Calendar
+INSERT INTO Stage_Calendar(D_ID,DD_inserted,MM_inserted,YYYY_inserted,HH24_inserted,MM60_inserted,WeekNumber_inserted,NameOfMonth_inserted, NameOfWeekday_inserted)
+Select m.M_ID ,DAY(m.Date_Inserted),MONTH(m.Date_Inserted),YEAR(m.Date_Inserted),DATEPART(HOUR,m.Date_Inserted),
+DATEPART(MINUTE,m.Date_Inserted), DATEPART(week, m.Date_Inserted), DATENAME(month, m.Date_Inserted), DATENAME(WEEKDAY, m.Date_Inserted)
 FROM sep4.dbo.Measurement m
 
 ----------------
@@ -149,13 +147,14 @@ FROM sep4.dbo.Measurement m
 ----------------
 DROP TABLE Stage_Fact_Data;
 CREATE TABLE Stage_Fact_Data(
-M_ID int NULL, --Measurement ID
-W_ID int NULL, --winecellar ID
-S_ID int NULL, --sensor id
-D_ID int NULL, --date id
+M_ID int NULL,
+W_ID int NULL,
+S_ID int NULL,
+D_ID int NULL,
 MeasureID int NULL,
 SensorID int NULL,
-WineCellarID int NULL
+WineCellarID int NULL,
+CalendarID int NULL
 );
 
 ---------------------
@@ -167,7 +166,7 @@ SELECT
 M.MeasureID, S.SensorID, W.WinecellarID
 From SEP4.dbo.Stage_Sensor S
 JOIN SEP4.dbo.Stage_WineCellar W on W.WineCellarID = S.WineCellarID
-JOIN SEP4.dbo.Stage_Measurement M on M.MeasureID = S.MeasureID
+JOIN SEP4.dbo.Stage_Measurement M on M.SensorID = S.SensorID
 
 ------------------------------------
 ---Fill Data warehouse Dimensions---
@@ -178,23 +177,23 @@ set @endTime = '2099/01/01'
 set @now = (select max(Last_updated) from DW_Update)
 
 --Calendar
-INSERT INTO DW_D_Calendar(D_ID, DD_inserted,MM_inserted,YYYY_inserted,HH24_inserted,MM60_inserted,WeekNumber_inserted,NameOfMonth_inserted, NameOfWeekday_inserted)
-SELECT C_ID, DD_inserted,MM_inserted,YYYY_inserted,HH24_inserted,MM60_inserted,WeekNumber_inserted,NameOfMonth_inserted, NameOfWeekday_inserted
+INSERT INTO DW_D_Calendar(DD_inserted,MM_inserted,YYYY_inserted,HH24_inserted,MM60_inserted,WeekNumber_inserted,NameOfMonth_inserted, NameOfWeekday_inserted)
+SELECT DD_inserted,MM_inserted,YYYY_inserted,HH24_inserted,MM60_inserted,WeekNumber_inserted,NameOfMonth_inserted, NameOfWeekday_inserted
 FROM Stage_Calendar
 
 --WineCellar
-INSERT INTO DW_D_WineCellar(W_ID,WineCellarID,CellarName,validFrom, validTo)
-SELECT W_ID,WineCellarID,CellarName, @now, @endTime
+INSERT INTO DW_D_WineCellar(WineCellarID,CellarName,validFrom, validTo)
+SELECT WineCellarID,CellarName, @now, @endTime
 FROM Stage_WineCellar
 
 --Measurement
-INSERT INTO DW_D_Measurement(M_ID,MeasureID,CO2Value, TemperatureValue,HumidityValue,MeasureTimestamp, validFrom, validTo)
-SELECT M_ID,MeasureID,CO2Value, TemperatureValue,HumidityValue,MeasureTimestamp, @now, @endTime
+INSERT INTO DW_D_Measurement(MeasureID,DataName,DataValue,MeasureTimestamp,SensorID, validFrom, validTo)
+SELECT MeasureID,DataName,DataValue,MeasureTimestamp,SensorID, @now, @endTime
 FROM Stage_Measurement
 
 --Sensor
-INSERT INTO DW_D_Sensor(S_ID,SensorID,SensorName,RoomLocation,MeasureID,WineCellarID, validFrom, validTo)
-SELECT S_ID,SensorID,SensorName,RoomLocation,MeasureID,WineCellarID, @now, @endTime
+INSERT INTO DW_D_Sensor(SensorID,SensorName,RoomLocation,WineCellarID, validFrom, validTo)
+SELECT SensorID,SensorName,RoomLocation,WineCellarID, @now, @endTime
 FROM Stage_Sensor
 
 ---------------------------
@@ -226,16 +225,12 @@ SET S_ID = (
 
 
 ----Calendar
---UPDATE Stage_Fact_Data
---SET D_ID = (
---	SELECT D_ID
---	FROM DW_D_Calendar c 
---	WHERE c. = Stage_Fact_Data.
---)
-
-
-
-
+UPDATE Stage_Fact_Data
+SET D_ID = (
+	SELECT c.D_ID
+	FROM DW_D_Calendar c 
+	WHERE c.D_ID = Stage_Fact_Data.CalendarID
+)
 ------------------------------
 ---Fill Data warehouse fact---
 ------------------------------
@@ -250,4 +245,8 @@ Select * from Stage_fact_data
 --Select * from Stage_WineCellar
 --Select * from Stage_Calendar
 
-Select * from DW_F_Data
+--Select * from sep4.dbo.Sensor
+--Select * from WineCellar
+--Select * from Measurement
+
+--Select * from DW_F_Data

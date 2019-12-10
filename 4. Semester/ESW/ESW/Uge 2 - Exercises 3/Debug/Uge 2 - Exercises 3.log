@@ -1,0 +1,3 @@
+﻿  main.c
+c:\users\erikv\desktop\softwareengineering\4. semester\esw\esw\uge 2 - exercises 3\main.c(39): warning C4477: 'printf' : format string '%s' requires an argument of type 'char *', but variadic argument 1 has type 'int'
+  Uge 2 - Exercises 3.vcxproj -> C:\Users\ErikV\Desktop\SoftwareEngineering\4. Semester\ESW\ESW\Debug\Uge 2 - Exercises 3.exe

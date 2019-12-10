@@ -239,7 +239,3 @@ GO
 INSERT INTO DM_Northwind.dbo.F_Sales(D_ID,C_ID,P_ID,E_ID,Quantity, LineTotal)
 SELECT s.D_ID, s.C_ID, s.P_ID, s.E_ID, s.Quantity, s.SalesAmount FROM Stage_F_sales s
 WHERE CAST(s.OrderDateID as date) >= '1996/01/01' and CAST(s.OrderDateID as date) <= '1997/12/31'
-
---Testing stuff
---Select * from DM_Northwind.dbo.F_Sales
---Select D_ID,sum(LineTotal) DayTotal from DM_Northwind.dbo.F_Sales Group by D_ID Order by D_ID 

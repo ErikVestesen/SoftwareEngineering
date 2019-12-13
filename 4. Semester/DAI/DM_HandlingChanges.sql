@@ -34,7 +34,7 @@ PostalCode NVARCHAR(50)
 --Last updated variables
 DECLARE @lastUpdated Date = (Select Last_updated from DM_Northwind.dbo.DM_Update) --31/12/1997
 DECLARE @lastUpdatedPlusOne Date = DATEADD(day,1,(Select Last_updated from DM_Northwind.dbo.DM_Update)) -- 01/01/1998
-DECLARE @endDate Date = '12/31/9999' 
+DECLARE @endDate Date = '2099/01/01' 
 ------------------------
 --------Customer--------
 ------------------------

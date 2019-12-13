@@ -169,18 +169,6 @@ JOIN SEP4.dbo.Measurement M on M.SensorID = S.SensorID
 JOIN sep4.dbo.Stage_Calendar C on C.EntireDateInserted = M.Date_Inserted
 WHERE M.DataType = S.SensorName
 
---INSERT INTO Stage_Fact_Data 
---(MeasureID, SensorID, WineCellarID, InsertedDate)
---SELECT
---M.M_ID, S.S_ID, W.W_ID, C.EntireDateInserted
---From SEP4.dbo.Stage_Sensor S
---JOIN SEP4.dbo.Stage_WineCellar W on W.W_ID = S.WineCellarID
---JOIN SEP4.dbo.Stage_Measurement M on M.SensorID = S.S_ID
---JOIN sep4.dbo.Stage_Calendar C on C.EntireDateInserted = M.MeasureTimestamp
-
-
-
-
 ------------------------------------
 ---Fill Data warehouse Dimensions---
 ------------------------------------
@@ -240,7 +228,7 @@ SET S_ID = (
 ----Calendar
 UPDATE Stage_Fact_Data
 SET D_ID = (
-	SELECT c.D_ID
+	SELECT top 1(c.D_ID)
 	FROM DW_D_Calendar c 
 	WHERE c.EntireDateInserted = Stage_Fact_Data.InsertedDate
 )
@@ -251,14 +239,7 @@ INSERT INTO DW_F_Data(S_ID, W_ID, M_ID, D_ID)
 SELECT S_ID, W_ID, M_ID, D_ID 
 FROM Stage_Fact_Data
 
+--Select * from DW_F_Data
 --Testing stuff, remove me later plz
 Select * from Stage_fact_data
---Select * from Stage_Measurement
---Select * from Stage_Sensor
---Select * from Stage_WineCellar
---Select * from Stage_Calendar
 
---Select * from sep4.dbo.Sensor
---Select * from WineCellar
---Select * from Measurement 
---Select * from DW_F_Data 

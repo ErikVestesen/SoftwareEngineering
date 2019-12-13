@@ -124,8 +124,6 @@ WHERE MeasureID in
 	SELECT MeasureID FROM sep4.dbo.Measurement
 	)
 )
-select * from WineCellar
-Select * from DW_D_WineCellar where validTo > GETDATE() and WineCellarID  = 1
 
 --Insert and update changed Measurements
 INSERT INTO DW_Changed_Measurement(MeasureID,DataName,DataValue,MeasureTimestamp,SensorID)

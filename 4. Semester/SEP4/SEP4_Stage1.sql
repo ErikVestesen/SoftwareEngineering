@@ -19,6 +19,8 @@ DROP TABLE DW_D_Calendar;
 DROP TABLE DW_D_WineCellar;
 DROP TABLE DW_D_Measurement;
 
+
+
 CREATE TABLE DW_D_Measurement(
 M_ID INT PRIMARY KEY IDENTITY (1, 1), 
 MeasureID INT,
@@ -66,14 +68,17 @@ CREATE TABLE DW_F_Data(
 	D_ID INT REFERENCES DW_D_Calendar(D_ID),
 	S_ID INT REFERENCES DW_D_Sensor(S_ID),
 	W_ID INT REFERENCES DW_D_WineCellar(W_ID),
-	M_ID INT REFERENCES DW_D_Measurement(M_ID)
+	M_ID INT REFERENCES DW_D_Measurement(M_ID),
+	DailyAverageCO2 DECIMAL(18,2),
+	DailyAverageTemperature  DECIMAL(18,2),
+	DailyAverageHumidity DECIMAL(18,2)
 );
 
 CREATE TABLE DW_Update(
 	Last_updated Date
 )
 --Insert last updated date into table
-INSERT INTO DW_Update(Last_updated) select CAST(GETDATE() as date)
+INSERT INTO DW_Update(Last_updated) select CAST('2019-12-12' as date)
 
 -----------
 ---Stage---
@@ -243,3 +248,5 @@ FROM Stage_Fact_Data
 --Testing stuff, remove me later plz
 Select * from Stage_fact_data
 
+select count(*) from DW_D_Measurement
+select count(*) from DW_F_Data

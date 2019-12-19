@@ -95,9 +95,6 @@ FROM DW_Changed_Sensor
 -----------------
 ---Measurement---
 -----------------
----Test
---Insert into Measurement(Date_Inserted, DataType, DataValue)VALUES (GETDATE(), 'CO2', 123)
-
 --Insert added measurement
 INSERT INTO sep4.dbo.DW_D_Measurement(MeasureID,DataName,DataValue,MeasureTimestamp,SensorID, validFrom, validTo)
 Select M_ID,DataType,DataValue,Date_Inserted,SensorID, @lastUpdatedPlusOne, @endDate from sep4.dbo.Measurement
@@ -200,7 +197,6 @@ INSERT INTO DW_Changed_Winecellar(WineCellarID,CellarName)
 		)
 	)
 )
-
 UPDATE DW_D_WineCellar
 SET validTo = @lastUpdated
 WHERE WineCellarID in
@@ -212,4 +208,8 @@ SELECT WineCellarID,CellarName, @lastUpdatedPlusOne, @endDate FROM DW_Changed_Wi
 
 
 
-select * from DW_D_Measurement order by MeasureTimestamp desc
+--select * from Measurement
+select * from DW_D_Measurement
+--update Measurement set DataValue = 32.32 where Date_Inserted > DATEADD(hour,-1,GETDATE())
+--insert into Measurement values (GETDATE(), 'CO2', 200, 1)
+--delete from Measurement where Date_Inserted > DATEADD(MINUTE,-1,GETDATE())

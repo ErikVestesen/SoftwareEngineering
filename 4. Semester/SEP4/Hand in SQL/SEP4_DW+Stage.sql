@@ -1,14 +1,5 @@
 USE sep4
 go
---TODO (for initial load):
-
---discuss fact table values... only got ids right now
-
---Update calendar surrogate key, missing an ID
---Fill data warehouse fact
-
---Entire incremential load stuff, not now plz
-
 -----------------------
 ---Create Dimensions---
 -----------------------
@@ -18,8 +9,6 @@ DROP TABLE DW_D_Sensor;
 DROP TABLE DW_D_Calendar;
 DROP TABLE DW_D_WineCellar;
 DROP TABLE DW_D_Measurement;
-
-
 
 CREATE TABLE DW_D_Measurement(
 M_ID INT PRIMARY KEY IDENTITY (1, 1), 
@@ -295,4 +284,3 @@ Set
 		WHERE m.M_ID = DW_F_Data.M_ID
 		AND CONVERT(date, m.MeasureTimestamp) = a.dateTimestamp
 	)
-

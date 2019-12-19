@@ -83,6 +83,7 @@ INSERT INTO DW_Update(Last_updated) select CAST(GETDATE() as date)
 -----------
 ---Stage---
 -----------
+DROP TABLE Stage_Fact_Data;
 DROP TABLE Stage_Sensor;
 DROP TABLE Stage_Calendar;
 DROP TABLE Stage_WineCellar;
@@ -149,7 +150,6 @@ FROM sep4.dbo.Measurement m
 ----------------
 ---Stage Fact---
 ----------------
-DROP TABLE Stage_Fact_Data;
 CREATE TABLE Stage_Fact_Data(
 M_ID int NULL,
 W_ID int NULL,
@@ -212,7 +212,6 @@ SET W_ID = (
 	FROM DW_D_WineCellar w 
 	WHERE w.WineCellarID = Stage_Fact_Data.WineCellarID
 )
-
 ----Measurement
 UPDATE Stage_Fact_Data
 SET M_ID = (
@@ -229,6 +228,10 @@ SET S_ID = (
 	WHERE s.SensorID = Stage_Fact_Data.SensorID
 )
 
+select * from Sensor
+SELECT s.S_ID 
+	FROM DW_D_Sensor s,Stage_Fact_Data
+	WHERE s.SensorID = Stage_Fact_Data.SensorID
 
 ----Calendar
 UPDATE Stage_Fact_Data
@@ -243,7 +246,7 @@ SET D_ID = (
 INSERT INTO DW_F_Data(S_ID, W_ID, M_ID, D_ID)
 SELECT S_ID, W_ID, M_ID, D_ID 
 FROM Stage_Fact_Data
-
+select * from Stage_Fact_Data
 ---------------------
 ---Update DW facts---
 ---------------------
@@ -296,3 +299,6 @@ Set
 		AND CONVERT(date, m.MeasureTimestamp) = a.dateTimestamp
 	)
 
+
+
+	select * from DW_F_Data
